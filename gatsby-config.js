@@ -6,7 +6,8 @@ const shouldAnalyseBundle = process.env.ANALYSE_BUNDLE
 
 module.exports = {
   siteMetadata: {
-    siteTitleAlt: `Minimal Blog - Gatsby Theme`,
+    siteTitle: `Rayan Hatout`,
+    siteTitleAlt: `Rayan Hatout`,
   },
   plugins: [
     {
@@ -15,23 +16,31 @@ module.exports = {
       options: {
         navigation: [
           {
+            title: `About`,
+            slug: `/about`,
+          },
+          {
             title: `Blog`,
             slug: `/blog`,
           },
           {
-            title: `About`,
-            slug: `/about`,
+            title: `Projects & Experiments`,
+            slug: `/dev`,
           },
         ],
         externalLinks: [
           {
-            name: `Twitter`,
-            url: `https://twitter.com/lekoarts_de`,
+            name: `GitHub`,
+            url: `https://www.github.com/rayanht/`,
           },
           {
-            name: `Instagram`,
-            url: `https://www.instagram.com/lekoarts.de/`,
+            name: `Twitter`,
+            url: `https://twitter.com/rayanhtt`,
           },
+          {
+            name: `LinkedIn`,
+            url: `https://www.linkedin.com/in/rayan-hatout`,
+          }
         ],
       },
     },
