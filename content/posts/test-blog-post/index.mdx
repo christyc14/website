@@ -132,9 +132,12 @@ Let’s explore an example by adding a `become_older` method to our good ol’ `
 class Person:
     name: str
     age: int
+
     def become_older(self):
         self.age += 1
+
 p = Person(name="Rayan", age=19)
+
 print(p)         # Person@[age=19, name=Rayan]
 p.become_older()
 print(p)         # Person@[age=20, name=Rayan]
@@ -147,13 +150,17 @@ Nothing groundbreaking so far, let’s now do something that might feel unnatura
 class Person:
     name: str
     age: int
+
     def become_older(self):
         self.age += 1
+
 # Note that this is defined outside of the class
 def become_older_faster(self):
     self.age += 2
+
 Person.become_older = become_older_faster # Monkey-patching
 p = Person(name="Rayan", age=19)
+
 print(p)         # Person@[age=19, name=Rayan]
 p.become_older()
 print(p)         # Person@[age=21, name=Rayan]
