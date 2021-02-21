@@ -123,8 +123,46 @@ if you'd like to check them all out. If you want to understand the internals, re
 ##### A primer on monkey-patching
 
 Monkey-patching is a technique that allows you to dynamically modify the behaviour of an object at runtime.
-In most cases, this is not something that you will want to do but it _is_ useful for very specific use cases like
+In most cases, this is not something that you will want to do but it is useful for very specific use cases like
 unit tests, modifying the behaviour of a library function or even dynamically attaching a function to a Python class!
+Let’s explore an example by adding a `become_older` method to our good ol’ `Person`:
+
+```python
+@paprika.data
+class Person:
+    name: str
+    age: int
+    def become_older(self):
+        self.age += 1
+p = Person(name="Rayan", age=19)
+print(p)         # Person@[age=19, name=Rayan]
+p.become_older()
+print(p)         # Person@[age=20, name=Rayan]
+```
+
+Nothing groundbreaking so far, let’s now do something that might feel unnatural to you:
+
+```python
+@paprika.data
+class Person:
+    name: str
+    age: int
+    def become_older(self):
+        self.age += 1
+# Note that this is defined outside of the class
+def become_older_faster(self):
+    self.age += 2
+Person.become_older = become_older_faster # Monkey-patching
+p = Person(name="Rayan", age=19)
+print(p)         # Person@[age=19, name=Rayan]
+p.become_older()
+print(p)         # Person@[age=21, name=Rayan]
+```
+
+Every call to `Person.become_older` is replaced by a call to `become_older_faster` without actually changing
+the user-facing interface of the `Person` class! Monkey-patching goes even deeper and there are [great reads]()
+out there but this is all you need to know for now.
+
 
 ##### A primer on Python decorators
 
@@ -243,242 +281,9 @@ Meaning that we actually are in the case where "I cheated".
 The rest of the logic is pretty straightforward, we simply compare the `__dict__` of the two objects using
 built-in `dict` equality and check that we are comparing two things that are _actually_ instances of the same class.
 
----
-
-##### tl;dr: if you're tired of writing constructors check out Paprika [on GitHub](https://github.com/rayanht/paprika)
----
-
-This blog post is also available on [Medium](https://rayan-hatout.medium.com/paprika-a-boilerplate-library-for-python-3f9f7fe019ac) (with worse-looking code blocks)
-
-### Why?
-
-I am a lazy (and on rare occasions, busy) person, if there's a way I can make my life easier and waste
-less time as a developer  I will rarely miss that opportunity. You might think that you don't waste _that_ much time writing
-boilerplate code, maybe 5% of your time at most.
-
->5% of a standard workweek is a whole **2 hours**
-
-Not only do you waste time writing boilerplate, every single line of code that you manually write is a
-potential source of error; so why do this to yourself?
-
-If you've written a lot of Java, you're probably familiar with [Project Lombok](https://projectlombok.org/).
-For the uninitiated, Java is a _very_ verbose language and Lombok is a library that aims to reduce time spent writing
-boilerplate code (POJOs, boring constructors, getters, setters...) by leveraging annotation processors
-(i.e. magic directives that can dynamically modify your source code by interacting with the Java compiler).
-
-This is great stuff! Unfortunately, I don't write much Java these days (maybe for the better?) so this one is not
-for me. I do however write my fair amount of Python and if you're like me, this is where the fun begins.
-
-#### Paprika in action
-
-Let's say you need a dead simple Python class, the simplest thing you could possibly do is:
-
-```python
-class Person: pass
-```
-
-Granted, this isn't very useful but it _is_ the simplest thing you could possibly do.
-Let's now say your specification for a `Person` has a name and age. We need a constructor:
-
-```python
-class Person:
-    def __init__(self, name: str, age: int):
-        self.name = name
-        self.age = age
-```
-
-So far so good, you can create as many instances of `Person` as your heart desires.
-What if you need to debug the fields of your `Person`? Well to do that you can simply override `__str__`:
-
-```python
-class Person:
-    def __init__(self, name: str, age: int):
-        self.name = name
-        self.age = age
-
-    def __str__(self):
-         return f"{self.__name__}@[name={self.name}, age={self.age}]"
-
-print(Person(name="Rayan", age=19)) # Person@[name=Rayan, age=19]
-```
-
-We're getting somewhere! Now let's say that for all intents and purposes,
-your specification of a `Person` is such that if two persons have the same name and age,
-they are _the same_ person.
-
-```python
-Person(name="Rayan", age=19) == Person(name="Rayan", age=19) # False ❌
-Person(name="Rayan", age=19) is Person(name="Rayan", age=19) # False ❌
-```
-
-Uh oh, what just happened? If your OOP skills are not rusty you'll know that we actually need to
-override `__eq__` and `__hash__` to be able to perform these equalities. Here's our final class:
-
-```python
-class Person:
-    def __init__(self, name: str, age: int):
-        self.name = name
-        self.age = age
-
-    def __str__(self):
-        return f"{self.__name__}@[name={self.name}, age={self.age}]"
-
-    def __eq__(self, other):
-        return (self.__class__ == other.__class__
-                and
-                self.__dict__ == other.__dict__)
-
-    def __hash__(self):
-        return hash((self.name, self.age))
-
-Person(name="Rayan", age=19) == Person(name="Rayan", age=19) # True ✅
-Person(name="Rayan", age=19) is Person(name="Rayan", age=19) # True ✅
-```
-
-What if we didn't need to write all of that? The good news is that we don't have to. The bad news is that you'll need to add a dependency to your project. The good news is that `paprika` doesn't have any dependencies itself!
-
-```bash
-$ pip install paprika
-```
----
-```python
-import paprika
-
-@paprika.data
-class Person:
-    name: str
-    age: int
-```
-
-The `@data` decorator seamlessly gives your class an `__init__`, a `__str__`, a `__eq__` and a `__hash__` at runtime!
-
-`@data` is just one of the decorators provided by Paprika, head to the [GitHub repo](https://github.com/rayanht/paprika)
-if you'd like to check them all out. If you want to understand the internals, read on!
-
-### How?
-
-##### A primer on monkey-patching
-
-Monkey-patching is a technique that allows you to dynamically modify the behaviour of an object at runtime.
-In most cases, this is not something that you will want to do but it _is_ useful for very specific use cases like
-unit tests, modifying the behaviour of a library function or even dynamically attaching a function to a Python class!
-
-##### A primer on Python decorators
-
-The `@data` construct you've seen earlier is what we call a decorator. Long story short, a decorator is a function
-that takes another function (or a class!) and extends its behaviour without actually modifying the decorated structure.
-One of the simplest decorator you can imagine is one that prints a message before your decorated function is called and
-another message after the call. You'd implement this behaviour as follows:
-
-```python
-def print_decorator(decorated_function):
-    def wrapper():
-        print("Before function call")
-        decorated_function()
-        print("After function call")
-    return wrapper
-```
-
-And you can now use `@print_decorator` before any function!
-
-```python
-@print_decorator
-def f():
-    print(42)
-
-f()
-```
-Will output:
-```
-Before function call
-42
-After function call
-```
-
-The gist of it is that the decorator syntax is equivalent to the following one:
-
-```python
-print_decorator(f)()
-```
-Which also outputs:
-```
-Before function call
-42
-After function call
-```
-##### Deeper dive: @equals_and_hashcode
-
-The `@equals_and_hashcode` decorator dynamically creates `__eq__` and `__hash__` for the decorated class.
-Here's the source code for that decorator:
-
-```python
-def equals_and_hashcode(decorated_class):
-    def __eq__(self, other):
-        same_class = getattr(self, "__class__") == getattr(other, "__class__")
-        same_attrs = getattr(self, "__dict__") == getattr(other, "__dict__")
-        return same_class and same_attrs
-
-    def __hash__(self):
-        attributes = tuple(sorted(tuple(getattr(self, "__dict__").keys())))
-        return hash(attributes)
-
-    decorated_class.__hash__ = __hash__
-    decorated_class.__eq__ = __eq__
-    return decorated_class
-```
-
-If you've been following so far, you'll notice that the actual monkey-patching happens at lines 11 and 12.
-The only mystery that now remains is - how do we write a generic `__eq__` method? To do that, we have to leverage an
-intricacy of Python: (almost) everything is an `object`!
-
-More specifically, a class is an `object` and an `object` has special fields. Two of the (many) special fields that
-we can use are `__dict__` and `__class__`. Quoting the [Python](https://docs.python.org/3/library/stdtypes.html)
-documentation:
-
->`__dict__` => A dictionary or other mapping object used to store an object's (writable) attributes.
-
->`__class__` => The class to which a class instance belongs.
-
-This is brilliant, we can access the fields of a class and its type without actually having a handle to an
-_instance_ of the class! Here's a concrete example:
-
-```python
-@paprika.data
-class Person:
-    name: str
-    age: int
-
-p = Person(name="Rayan", age=19)
-
-print(p.__dict__)  # {'name': 'Rayan', 'age': 19}
-print(p.__class__) # <class '__main__.Person'>
-```
-
-You might think I'm cheating here. I just told you that we were not concerned about a specific instance
-but rather about the class!
-
-Here's what happens if I try to access `__dict__` and `__class__` on the class rather than an instance:
-
-```python
-@paprika.data
-class Person:
-    name: str
-    age: int
-
-p = Person
-
-print(p.__dict__)  # {'__module__': '__main__', '__init__': <function Person.__init__ at 0x1090ed310>, '__dict__': <attribute '__dict__' of 'Person' objects>, '__weakref__': <attribute '__weakref__' of 'Person' objects>, '__doc__': None, '__hash__': <function equals_and_hashcode.<locals>.__hash__ at 0x1090ed3a0>, '__eq__': <function equals_and_hashcode.<locals>.__eq__ at 0x101d62280>}
-print(p.__class__) # print(p.__class__)
-```
-
-Huh?
-
-Alright here's the insight - by the time the interpreter actually reaches the part of the code in the `__eq__` method
-where we try to access `__dict__` it will necessarily be monkey-patched to a specific _instance_ of the class already.
-Meaning that we actually are in the case where "I cheated".
-
-The rest of the logic is pretty straightforward, we simply compare the `__dict__` of the two objects using
-built-in `dict` equality and check that we are comparing two things that are _actually_ instances of the same class.
+The majority of Paprika decorators work similarly and are all available in the repo. As a closing note,
+if you’re looking for a quick and interesting puzzle I’d suggest you go ahead and try reverse-engineering the
+decorator that creates a constructor!
 
 ---
 
